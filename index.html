@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<!-- Declaração do tipo de documento HTML5 para garantir renderização correta -->
+<html lang="pt-BR">
+<!-- Idioma definido como português do Brasil para acessibilidade e SEO -->
+
+<head>
+    <!-- Cabeçalho do documento - contém metadados e recursos -->
+    <meta charset="UTF-8">
+    <!-- Define codificação de caracteres UTF-8 para suporte completo a acentos e caracteres especiais -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <!-- Viewport responsivo com suporte a zoom para acessibilidade -->
+    <meta name="description" content="Sistema de reclamações e denúncias - Sua voz importa">
+    <!-- Descrição para SEO e acessibilidade -->
+    <meta name="theme-color" content="#1e5bb8">
+    <!-- Cor do tema para navegadores mobile -->
+    <title>Reclame - Sistema de Denúncias</title>
+    <!-- Título da página exibido na aba do navegador -->
+
+    <!-- Biblioteca jsPDF para geração de arquivos PDF - carregamento lazy -->
+    <script>
+        // Variável para controle de carregamento lazy do jsPDF
+        let jsPDFLoaded = false;
+        let pdfQueue = [];
+
+        function loadJsPDF() {
+            return new Promise((resolve, reject) => {
+                if (jsPDFLoaded) {
+                    resolve(window.jspdf);
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                script.onload = () => {
+                    jsPDFLoaded = true;
+                    resolve(window.jspdf);
+                };
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+    </script>
+
+    <style>
+        /* ==================== ESTILOS GLOBAIS ==================== */
+
+        /* Reset básico para garantir consistência entre navegadores */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Variáveis CSS para temas (claro/escuro) */
+        :root {
+            --bg-primary: linear-gradient(135deg, #eef2f7, #d9e2ec);
+            --bg-container: rgba(255, 255, 255, 0.95);
+            --text-primary: #1f2d3d;
+            --text-secondary: #555;
+            --accent-color: #6a0dad;
+            --btn-primary: #1e5bb8;
+            --btn-danger: #e74c3c;
+            --btn-danger-hover: #c0392b;
+            --btn-secondary: #5dade2;
+            --border-color: #e0e0e0;
+            --error-color: #e74c3c;
+            --success-color: #27ae60;
+            --shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Tema escuro */
+        [data-theme="dark"] {
+            --bg-primary: linear-gradient(135deg, #1a1a2e, #16213e);
+            --bg-container: rgba(30, 30, 46, 0.95);
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+            --border-color: #444;
+            --shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Estilo principal do corpo da página */
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            transition: background 0.3s ease;
+        }
+
+        /* Container principal de cada tela */
+        .container {
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+            background: var(--bg-container);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* Animações */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Título principal */
+        h1 {
+            font-size: 42px;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+
+        h1 span {
+            color: var(--accent-color);
+        }
+
+        /* Subtítulo descritivo */
+        .sub {
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        /* Estilo base para todos os botões */
+        .btn {
+            width: 100%;
+            max-width: 300px;
+            padding: 15px;
+            margin: 10px auto;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            display: block;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            border: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Efeito ripple nos botões */
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            transform: translate(-50%, -50%);
+            transition: width 0.3s, height 0.3s;
+        }
+
+        .btn:active::after {
+            width: 200px;
+            height: 200px;
+        }
+
+        /* Estilo específico para botões anônimos/primários */
+        .anonimo {
+            background-color: var(--btn-primary);
+            color: white;
+            border: 2px solid var(--btn-primary);
+        }
+
+        /* Efeito hover para botões anônimos */
+        .anonimo:hover {
+            background-color: white;
+            color: var(--btn-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Botão desabilitado */
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Botão Sair fixo no canto inferior direito */
+        .sair {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--btn-danger);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .sair:hover {
+            background-color: var(--btn-danger-hover);
+            transform: scale(1.05);
+        }
+
+        /* Botão Voltar fixo no canto inferior esquerdo */
+        .voltar {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background-color: var(--btn-secondary);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: none;
+            z-index: 1000;
+        }
+
+        .voltar:hover {
+            background-color: #3498db;
+            transform: scale(1.05);
+        }
+
+        /* Botão de tema (modo escuro/claro) */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: var(--bg-container);
+            color: var(--text-primary);
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+
+        /* Modal de aviso */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            top: 0;
+            left: 0;
+        }
+
+        .modal-content {
+            background: var(--bg-container);
+            color: var(--text-primary);
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            animation: slideIn 0.3s ease;
+        }
+
+        .modal-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .confirmar {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            background: var(--btn-primary);
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .cancelar {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            background: #ccc;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--success-color);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            z-index: 1500;
+            animation: slideIn 0.3s ease;
+            font-weight: 500;
+            box-shadow: var(--shadow);
+        }
+
+        .toast.error {
+            background-color: var(--error-color);
+        }
+
+        /* Estilos para elementos de formulário */
+        input, select, textarea {
+            width: 100%;
+            max-width: 400px;
+            padding: 12px;
+            margin-top: 8px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border: 2px solid var(--border-color);
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+            background: var(--bg-container);
+            color: var(--text-primary);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--btn-primary);
+            box-shadow: 0 0 5px rgba(30, 91, 184, 0.3);
+        }
+
+        input:invalid, select:invalid {
+            border-color: var(--error-color);
+        }
+
+        textarea {
+            height: 120px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        /* Indicador de progresso */
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background-color: var(--border-color);
+            border-radius: 2px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--btn-primary);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .step-indicator {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        /* Mensagem de erro */
+        .erro {
+            color: var(--error-color);
+            display: none;
+            margin-top: -10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* Classes de controle de visibilidade */
+        .email-box, .categorias, .assedio-box, .aluno-box,
+        .professor-box, .tecnico-box, .infra-box, .outros-box {
+            display: none;
+        }
+
+        /* Foco visível para acessibilidade */
+        *:focus-visible {
+            outline: 3px solid var(--btn-primary);
+            outline-offset: 2px;
+        }
+
+        /* Responsividade */
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 32px;
+            }
+            .btn {
+                font-size: 16px;
+                padding: 12px;
+            }
+            .theme-toggle {
+                top: 10px;
+                right: 10px;
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Botão de alternância de tema (modo escuro/claro) -->
+    <button class="theme-toggle" id="themeToggle" aria-label="Alternar tema claro/escuro">🌓</button>
+
+    <!-- ==================== TELA INICIAL ==================== -->
+    <div class="container" id="telaInicial" role="main" aria-label="Tela inicial do sistema Reclame">
+        <h1>Bem-vindo ao <span>Reclame</span></h1>
+        <p class="sub">Sua voz importa. Estamos aqui para ouvir você.</p>
+
+        <button class="btn anonimo" id="btnEntrarAnonimo" aria-label="Entrar de forma anônima">Entrar anônimo</button>
+        <button class="btn anonimo" id="btnEntrarIdentificado" aria-label="Entrar identificado com e-mail">Entrar identificado</button>
+    </div>
+
+    <!-- ==================== TELA DE E-MAIL ==================== -->
+    <div class="container email-box" id="telaEmail" role="form" aria-label="Tela de identificação por e-mail">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressEmail" style="width: 33%;"></div>
+        </div>
+        <div class="step-indicator">Passo 1 de 3 - Identificação</div>
+
+        <h1>Informe seu e-mail</h1>
+
+        <input type="email" id="email" placeholder="Digite seu e-mail" autocomplete="email" aria-label="Endereço de e-mail" maxlength="100">
+        <div class="erro" id="erroEmail">O e-mail não foi digitado corretamente</div>
+
+        <button class="btn anonimo" id="btnContinuarEmail" aria-label="Continuar para o próximo passo">CONTINUAR</button>
+    </div>
+
+    <!-- ==================== TELA DE CATEGORIAS ==================== -->
+    <div class="container categorias" id="telaCategorias" role="menu" aria-label="Menu de categorias de denúncia">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressCategorias" style="width: 66%;"></div>
+        </div>
+        <div class="step-indicator">Passo 2 de 3 - Escolha a categoria</div>
+
+        <h1>CATEGORIAS</h1>
+
+        <button class="btn anonimo" id="btnAssedio" aria-label="Denúncia de assédio">Assédio</button>
+        <button class="btn anonimo" id="btnAluno" aria-label="Denúncia de aluno">Aluno</button>
+        <button class="btn anonimo" id="btnProfessor" aria-label="Denúncia de professor">Professor</button>
+        <button class="btn anonimo" id="btnTecnico" aria-label="Denúncia de técnico">Técnico</button>
+        <button class="btn anonimo" id="btnInfraestrutura" aria-label="Reclamação de infraestrutura">Infraestrutura</button>
+        <button class="btn anonimo" id="btnOutros" aria-label="Outras reclamações">Outros</button>
+    </div>
+
+    <!-- ==================== FORMULÁRIO DE ASSÉDIO ==================== -->
+    <div class="container assedio-box" id="telaAssedio" role="form" aria-label="Formulário de denúncia de assédio">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressAssedio" style="width: 100%;"></div>
+        </div>
+        <div class="step-indicator">Passo 3 de 3 - Preencha os detalhes</div>
+
+        <h1>Registro de Assédio</h1>
+
+        <input type="text" id="assediado" placeholder="Nome do assediado" autocomplete="off" maxlength="100" aria-label="Nome da pessoa assediada">
+        <input type="text" id="assediador" placeholder="Nome do assediador" autocomplete="off" maxlength="100" aria-label="Nome do assediador">
+
+        <select id="ocupacao" aria-label="Ocupação do assediador">
+            <option value="">Ocupação do assediador</option>
+            <option value="Aluno">Aluno</option>
+            <option value="Professor">Professor</option>
+            <option value="Técnico">Técnico</option>
+            <option value="Outros">Outros</option>
+        </select>
+
+        <input type="text" id="local" placeholder="Local do assédio" autocomplete="off" maxlength="200" aria-label="Local onde ocorreu o assédio">
+        <input type="date" id="data" aria-label="Data do ocorrido" max="9999-12-31">
+        <input type="time" id="hora" aria-label="Hora do ocorrido">
+        <textarea id="relato" placeholder="Relato do fato" maxlength="5000" aria-label="Relato detalhado do fato"></textarea>
+        <div class="erro" id="erroForm">Preencha todos os campos</div>
+
+        <button class="btn anonimo" id="btnEnviarAssedio" aria-label="Enviar denúncia">ENVIAR</button>
+    </div>
+
+    <!-- ==================== FORMULÁRIO DE ALUNO ==================== -->
+    <div class="container aluno-box" id="telaAluno" role="form" aria-label="Formulário de denúncia de aluno">
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: 100%;"></div>
+        </div>
+        <div class="step-indicator">Passo 3 de 3 - Preencha os detalhes</div>
+
+        <h1>Denúncia de Aluno</h1>
+
+        <input type="text" id="curso" placeholder="Nome do curso" autocomplete="off" maxlength="100" aria-label="Nome do curso">
+        <input type="text" id="alunoDenunciado" placeholder="Nome do aluno denunciado" autocomplete="off" maxlength="100" aria-label="Nome do aluno denunciado">
+        <textarea id="relatoAluno" placeholder="Relato do fato" maxlength="5000" aria-label="Relato detalhado do fato"></textarea>
+
+        <div class="erro" id="erroAluno">Preencha todos os campos</div>
+
+        <button class="btn anonimo" id="btnEnviarAluno" aria-label="Enviar denúncia">ENVIAR</button>
+    </div>
+
+    <!-- ==================== FORMULÁRIO DE PROFESSOR ==================== -->
+    <div class="container professor-box" id="telaProfessor" role="form" aria-label="Formulário de denúncia de professor">
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: 100%;"></div>
+        </div>
+        <div class="step-indicator">Passo 3 de 3 - Preencha os detalhes</div>
+
+        <h1>Denúncia de Professor</h1>
+
+        <input type="text" id="cursoProfessor" placeholder="Nome do curso" autocomplete="off" maxlength="100" aria-label="Nome do curso">
+        <input type="text" id="nomeProfessor" placeholder="Nome do professor" autocomplete="off" maxlength="100" aria-label="Nome do professor">
+        <input type="text" id="disciplina" placeholder="Disciplina" autocomplete="off" maxlength="100" aria-label="Disciplina">
+        <textarea id="relatoProfessor" placeholder="Relato do fato" maxlength="5000" aria-label="Relato detalhado do fato"></textarea>
+
+        <div class="erro" id="erroProfessor">Preencha todos os campos</div>
+
+        <button class="btn anonimo" id="btnEnviarProfessor" aria-label="Enviar denúncia">ENVIAR</button>
+    </div>
+
+    <!-- ==================== FORMULÁRIO DE TÉCNICO ==================== -->
+    <div class="container tecnico-box" id="telaTecnico" role="form" aria-label="Formulário de denúncia de técnico">
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: 100%;"></div>
+        </div>
+        <div class="step-indicator">Passo 3 de 3 - Preencha os detalhes</div>
+
+        <h1>Denúncia de Técnico</h1>
+
+        <input type="text" id="nomeTecnico" placeholder="Nome do técnico" autocomplete="off" maxlength="100" aria-label="Nome do técnico">
+        <textarea id="relatoTecnico" placeholder="Relato do fato" maxlength="5000" aria-label="Relato detalhado do fato"></textarea>
+
+        <div class="erro" id="erroTecnico">Preencha todos os campos</div>
+
+        <button class="btn anonimo" id="btnEnviarTecnico" aria-label="Enviar denúncia">ENVIAR</button>
+    </div>
+
+    <!-- ==================== FORMULÁRIO DE INFRAESTRUTURA ==================== -->
+    <div class="container infra-box" id="telaInfra" role="form" aria-label="Formulário de reclamação de infraestrutura">
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: 100%;"></div>
+        </div>
+        <div class="step-indicator">Passo 3 de 3 - Preencha os detalhes</div>
+
+        <h1>Reclamação de Infraestrutura</h1>
+
+        <select id="areaInfra" aria-label="Área da reclamação">
+            <option value="">Selecione a área</option>
+            <option value="Área Comum">Área Comum</option>
+            <option value="Ar Condicionado">Ar Condicionado</option>
+            <option value="Banheiros">Banheiros</option>
+            <option value="Bebedouros">Bebedouros</option>
+            <option value="Pintura">Pintura</option>
+            <option value="Piso">Piso</option>
+            <option value="Restaurante">Restaurante</option>
+            <option value="Sala de Aula">Sala de Aula</option>
+            <option value="Outros">Outros</option>
+        </select>
+
+        <textarea id="relatoInfra" placeholder="Relato do fato" maxlength="5000" aria-label="Relato detalhado do fato"></textarea>
+
+        <div class="erro" id="erroInfra">Preencha todos os campos</div>
+
+        <button class="btn anonimo" id="btnEnviarInfra" aria-label="Enviar reclamação">ENVIAR</button>
+    </div>
+
+    <!-- ==================== FORMULÁRIO DE OUTROS ==================== -->
+    <div class="container outros-box" id="telaOutros" role="form" aria-label="Formulário de outras reclamações">
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: 100%;"></div>
+        </div>
+        <div class="step-indicator">Passo 3 de 3 - Preencha os detalhes</div>
+
+        <h1>Outras Reclamações</h1>
+
+        <textarea id="relatoOutros" placeholder="Relato do fato" maxlength="5000" aria-label="Relato detalhado do fato"></textarea>
+
+        <div class="erro" id="erroOutros">Preencha o campo de relato</div>
+
+        <button class="btn anonimo" id="btnEnviarOutros" aria-label="Enviar reclamação">ENVIAR</button>
+    </div>
+
+    <!-- ==================== BOTÕES DE NAVEGAÇÃO ==================== -->
+    <button class="voltar" id="btnVoltar" aria-label="Voltar para tela anterior">← Voltar</button>
+    <button class="sair" id="btnSair" aria-label="Sair do sistema">✕ Sair</button>
+
+    <!-- ==================== MODAL DE AVISO ==================== -->
+    <div class="modal" id="modalAviso" role="dialog" aria-label="Aviso importante sobre envio anônimo" aria-modal="true">
+        <div class="modal-content">
+            <h2>Aviso Importante</h2>
+            <p>Ao optar pelo envio anônimo, a funcionalidade de denúncia de assédio fica suprimida por necessidade legal, sendo obrigatória a identificação das partes.</p>
+            <p>O acompanhamento deverá ser feito via portal da ouvidoria, pois não haverá e-mail para retorno.</p>
+
+            <div class="modal-buttons">
+                <button class="cancelar" id="btnFecharAviso" aria-label="Cancelar e voltar">Cancelar</button>
+                <button class="confirmar" id="btnConfirmarAnonimo" aria-label="Confirmar e continuar anonimamente">Estou ciente e desejo continuar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== SISTEMA DE RECLAMAÇÕES V2.0 ====================
+        // Versão com todas as melhorias implementadas
+        // Autor: Sistema Reclame
+        // Data: 2024
+
+        // === CONFIGURAÇÕES GLOBAIS ===
+        const VERSION = "2.0.0";
+        let modo = "";
+        let isSubmitting = false;
+        let currentRascunho = null;
+
+        // === MAPEAMENTO DE ELEMENTOS DOM ===
+        const elements = {
+            // Telas
+            telaInicial: document.getElementById('telaInicial'),
+            telaEmail: document.getElementById('telaEmail'),
+            telaCategorias: document.getElementById('telaCategorias'),
+            telaAssedio: document.getElementById('telaAssedio'),
+            telaAluno: document.getElementById('telaAluno'),
+            telaProfessor: document.getElementById('telaProfessor'),
+            telaTecnico: document.getElementById('telaTecnico'),
+            telaInfra: document.getElementById('telaInfra'),
+            telaOutros: document.getElementById('telaOutros'),
+
+            // Botões
+            btnVoltar: document.getElementById('btnVoltar'),
+            btnSair: document.getElementById('btnSair'),
+            modalAviso: document.getElementById('modalAviso'),
+
+            // Email
+            emailInput: document.getElementById('email'),
+            erroEmail: document.getElementById('erroEmail'),
+
+            // Erros
+            erroForm: document.getElementById('erroForm'),
+            erroAluno: document.getElementById('erroAluno'),
+            erroProfessor: document.getElementById('erroProfessor'),
+            erroTecnico: document.getElementById('erroTecnico'),
+            erroInfra: document.getElementById('erroInfra'),
+            erroOutros: document.getElementById('erroOutros'),
+        };
+
+        // === FUNÇÕES UTILITÁRIAS ===
+
+        /**
+         * Sanitiza texto para prevenir XSS
+         * @param {string} texto - Texto a ser sanitizado
+         * @returns {string} - Texto sanitizado
+         */
+        function sanitizarTexto(texto) {
+            if (!texto) return '';
+            return texto
+                .replace(/[&<>]/g, function(m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    return m;
+                })
+                .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+                    return c;
+                })
+                .trim();
+        }
+
+        /**
+         * Validação robusta de e-mail
+         * @param {string} email - E-mail a ser validado
+         * @returns {boolean} - True se válido
+         */
+        function validarEmailRobusto(email) {
+            const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            return regex.test(email);
+        }
+
+        /**
+         * Gera número de protocolo único para cada denúncia
+         * @param {string} tipo - Tipo da denúncia
+         * @returns {string} - Protocolo único
+         */
+        function gerarProtocolo(tipo) {
+            const data = new Date();
+            const ano = data.getFullYear();
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const dia = String(data.getDate()).padStart(2, '0');
+            const horas = String(data.getHours()).padStart(2, '0');
+            const minutos = String(data.getMinutes()).padStart(2, '0');
+            const segundos = String(data.getSeconds()).padStart(2, '0');
+            const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+            const tipoAbrev = tipo.substring(0, 3);
+            return `${tipoAbrev}-${ano}${mes}${dia}-${horas}${minutos}${segundos}-${random}`;
+        }
+
+        /**
+         * Debounce para evitar múltiplos cliques
+         * @param {Function} func - Função a ser executada
+         * @param {number} wait - Tempo de espera em ms
+         * @returns {Function} - Função com debounce
+         */
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        /**
+         * Exibe toast notification
+         * @param {string} message - Mensagem a ser exibida
+         * @param {string} type - Tipo (success, error)
+         */
+        function showToast(message, type = 'success') {
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) existingToast.remove();
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            toast.setAttribute('role', 'alert');
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        /**
+         * Salva rascunho no localStorage
+         * @param {string} tipo - Tipo do formulário
+         * @param {Object} dados - Dados do formulário
+         */
+        function salvarRascunho(tipo, dados) {
+            const chave = `rascunho_${tipo}`;
+            const rascunho = {
+                dados,
+                timestamp: Date.now(),
+                modo: modo
+            };
+            localStorage.setItem(chave, JSON.stringify(rascunho));
+        }
+
+        /**
+         * Carrega rascunho do localStorage
+         * @param {string} tipo - Tipo do formulário
+         * @returns {Object|null} - Dados do rascunho ou null
+         */
+        function carregarRascunho(tipo) {
+            const chave = `rascunho_${tipo}`;
+            const rascunhoStr = localStorage.getItem(chave);
+            if (rascunhoStr) {
+                try {
+                    const rascunho = JSON.parse(rascunhoStr);
+                    // Verifica se rascunho tem menos de 24 horas
+                    if (Date.now() - rascunho.timestamp < 86400000) {
+                        return rascunho;
+                    } else {
+                        localStorage.removeItem(chave);
+                    }
+                } catch (e) {
+                    console.error('Erro ao carregar rascunho:', e);
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Limpa rascunho do localStorage
+         * @param {string} tipo - Tipo do formulário
+         */
+        function limparRascunho(tipo) {
+            const chave = `rascunho_${tipo}`;
+            localStorage.removeItem(chave);
+        }
+
+        /**
+         * Restaura rascunho no formulário
+         * @param {string} tipo - Tipo do formulário
+         */
+        function restaurarRascunho(tipo) {
+            const rascunho = carregarRascunho(tipo);
+            if (rascunho && rascunho.dados) {
+                showToast(`Rascunho restaurado de ${new Date(rascunho.timestamp).toLocaleTimeString()}`, 'success');
+                return rascunho.dados;
+            }
+            return null;
+        }
+
+        // === FUNÇÕES DE NAVEGAÇÃO ===
+
+        function abrirAviso() {
+            modo = "anonimo";
+            elements.modalAviso.style.display = "flex";
+        }
+
+        function fecharAviso() {
+            elements.modalAviso.style.display = "none";
+        }
+
+        function confirmarAnonimo() {
+            elements.modalAviso.style.display = "none";
+            mostrarCategorias();
+        }
+
+        function abrirEmail() {
+            modo = "identificado";
+            elements.telaInicial.style.display = "none";
+            elements.telaEmail.style.display = "block";
+        }
+
+        function validarEmail() {
+            const email = elements.emailInput.value.trim();
+
+            if (!validarEmailRobusto(email)) {
+                elements.erroEmail.style.display = "block";
+                return false;
+            } else {
+                elements.erroEmail.style.display = "none";
+                mostrarCategorias();
+                return true;
+            }
+        }
+
+        function mostrarCategorias() {
+            elements.telaInicial.style.display = "none";
+            elements.telaEmail.style.display = "none";
+            elements.telaCategorias.style.display = "block";
+            elements.btnVoltar.style.display = "block";
+
+            const btnAssedio = document.getElementById('btnAssedio');
+            if (btnAssedio) {
+                btnAssedio.style.display = (modo === "anonimo") ? "none" : "block";
+            }
+        }
+
+        function abrirAssedio() {
+            elements.telaCategorias.style.display = "none";
+            elements.telaAssedio.style.display = "block";
+            // Tentar restaurar rascunho
+            const dados = restaurarRascunho('assedio');
+            if (dados) {
+                document.getElementById("assediado").value = dados.assediado || '';
+                document.getElementById("assediador").value = dados.assediador || '';
+                document.getElementById("ocupacao").value = dados.ocupacao || '';
+                document.getElementById("local").value = dados.local || '';
+                document.getElementById("data").value = dados.data || '';
+                document.getElementById("hora").value = dados.hora || '';
+                document.getElementById("relato").value = dados.relato || '';
+            }
+        }
+
+        function abrirAluno() {
+            elements.telaCategorias.style.display = "none";
+            elements.telaAluno.style.display = "block";
+            const dados = restaurarRascunho('aluno');
+            if (dados) {
+                document.getElementById("curso").value = dados.curso || '';
+                document.getElementById("alunoDenunciado").value = dados.alunoDenunciado || '';
+                document.getElementById("relatoAluno").value = dados.relatoAluno || '';
+            }
+        }
+
+        function abrirProfessor() {
+            elements.telaCategorias.style.display = "none";
+            elements.telaProfessor.style.display = "block";
+            const dados = restaurarRascunho('professor');
+            if (dados) {
+                document.getElementById("cursoProfessor").value = dados.cursoProfessor || '';
+                document.getElementById("nomeProfessor").value = dados.nomeProfessor || '';
+                document.getElementById("disciplina").value = dados.disciplina || '';
+                document.getElementById("relatoProfessor").value = dados.relatoProfessor || '';
+            }
+        }
+
+        function abrirTecnico() {
+            elements.telaCategorias.style.display = "none";
+            elements.telaTecnico.style.display = "block";
+            const dados = restaurarRascunho('tecnico');
+            if (dados) {
+                document.getElementById("nomeTecnico").value = dados.nomeTecnico || '';
+                document.getElementById("relatoTecnico").value = dados.relatoTecnico || '';
+            }
+        }
+
+        function abrirInfra() {
+            elements.telaCategorias.style.display = "none";
+            elements.telaInfra.style.display = "block";
+            const dados = restaurarRascunho('infra');
+            if (dados) {
+                document.getElementById("areaInfra").value = dados.areaInfra || '';
+                document.getElementById("relatoInfra").value = dados.relatoInfra || '';
+            }
+        }
+
+        function abrirOutros() {
+            elements.telaCategorias.style.display = "none";
+            elements.telaOutros.style.display = "block";
+            const dados = restaurarRascunho('outros');
+            if (dados) {
+                document.getElementById("relatoOutros").value = dados.relatoOutros || '';
+            }
+        }
+
+        function voltarInicio() {
+            const telasFormulario = [
+                elements.telaAssedio, elements.telaAluno, elements.telaProfessor,
+                elements.telaTecnico, elements.telaInfra, elements.telaOutros
+            ];
+
+            const formularioVisivel = telasFormulario.some(tela => tela.style.display === "block");
+
+            if (formularioVisivel) {
+                telasFormulario.forEach(tela => tela.style.display = "none");
+                elements.telaCategorias.style.display = "block";
+                return;
+            }
+
+            if (elements.telaCategorias.style.display === "block") {
+                elements.telaCategorias.style.display = "none";
+                elements.telaInicial.style.display = "block";
+                elements.btnVoltar.style.display = "none";
+            }
+        }
+
+        // === FUNÇÕES DE ENVIO COM DEBOUNCE ===
+
+        const enviarFormularioDebounced = debounce(async function() {
+            if (isSubmitting) return;
+            isSubmitting = true;
+
+            const btn = document.getElementById('btnEnviarAssedio');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+
+            try {
+                const email = elements.emailInput.value.trim();
+
+                const campos = [
+                    document.getElementById("assediado").value.trim(),
+                    document.getElementById("assediador").value.trim(),
+                    document.getElementById("ocupacao").value,
+                    document.getElementById("local").value.trim(),
+                    document.getElementById("data").value,
+                    document.getElementById("hora").value,
+                    document.getElementById("relato").value.trim()
+                ];
+
+                if (campos.some(c => c === "") || (modo === "identificado" && !email)) {
+                    elements.erroForm.style.display = "block";
+                    showToast('Preencha todos os campos', 'error');
+                    return;
+                }
+
+                // Salvar rascunho antes de enviar
+                const rascunhoDados = {
+                    assediado: campos[0],
+                    assediador: campos[1],
+                    ocupacao: campos[2],
+                    local: campos[3],
+                    data: campos[4],
+                    hora: campos[5],
+                    relato: campos[6]
+                };
+                salvarRascunho('assedio', rascunhoDados);
+
+                elements.erroForm.style.display = "none";
+                await gerarPDF("ASSÉDIO", campos);
+                limparRascunho('assedio');
+                showToast('Denúncia enviada com sucesso! PDF gerado.', 'success');
+            } finally {
+                isSubmitting = false;
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }, 500);
+
+        const enviarAlunoDebounced = debounce(async function() {
+            if (isSubmitting) return;
+            isSubmitting = true;
+
+            const btn = document.getElementById('btnEnviarAluno');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+
+            try {
+                const email = elements.emailInput.value.trim();
+
+                const campos = [
+                    document.getElementById("curso").value.trim(),
+                    document.getElementById("alunoDenunciado").value.trim(),
+                    document.getElementById("relatoAluno").value.trim()
+                ];
+
+                if (campos.some(c => c === "") || (modo === "identificado" && !email)) {
+                    elements.erroAluno.style.display = "block";
+                    showToast('Preencha todos os campos', 'error');
+                    return;
+                }
+
+                const rascunhoDados = {
+                    curso: campos[0],
+                    alunoDenunciado: campos[1],
+                    relatoAluno: campos[2]
+                };
+                salvarRascunho('aluno', rascunhoDados);
+
+                elements.erroAluno.style.display = "none";
+                await gerarPDF("ALUNO", campos);
+                limparRascunho('aluno');
+                showToast('Denúncia enviada com sucesso! PDF gerado.', 'success');
+            } finally {
+                isSubmitting = false;
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }, 500);
+
+        const enviarProfessorDebounced = debounce(async function() {
+            if (isSubmitting) return;
+            isSubmitting = true;
+
+            const btn = document.getElementById('btnEnviarProfessor');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+
+            try {
+                const email = elements.emailInput.value.trim();
+
+                const campos = [
+                    document.getElementById("cursoProfessor").value.trim(),
+                    document.getElementById("nomeProfessor").value.trim(),
+                    document.getElementById("disciplina").value.trim(),
+                    document.getElementById("relatoProfessor").value.trim()
+                ];
+
+                if (campos.some(c => c === "") || (modo === "identificado" && !email)) {
+                    elements.erroProfessor.style.display = "block";
+                    showToast('Preencha todos os campos', 'error');
+                    return;
+                }
+
+                const rascunhoDados = {
+                    cursoProfessor: campos[0],
+                    nomeProfessor: campos[1],
+                    disciplina: campos[2],
+                    relatoProfessor: campos[3]
+                };
+                salvarRascunho('professor', rascunhoDados);
+
+                elements.erroProfessor.style.display = "none";
+                await gerarPDF("PROFESSOR", campos);
+                limparRascunho('professor');
+                showToast('Denúncia enviada com sucesso! PDF gerado.', 'success');
+            } finally {
+                isSubmitting = false;
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }, 500);
+
+        const enviarTecnicoDebounced = debounce(async function() {
+            if (isSubmitting) return;
+            isSubmitting = true;
+
+            const btn = document.getElementById('btnEnviarTecnico');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+
+            try {
+                const email = elements.emailInput.value.trim();
+
+                const nomeTecnico = document.getElementById("nomeTecnico").value.trim();
+                const relatoTecnico = document.getElementById("relatoTecnico").value.trim();
+                const campos = [nomeTecnico, relatoTecnico];
+
+                if (campos.some(c => c === "") || (modo === "identificado" && !email)) {
+                    elements.erroTecnico.style.display = "block";
+                    showToast('Preencha todos os campos', 'error');
+                    return;
+                }
+
+                const rascunhoDados = {
+                    nomeTecnico: campos[0],
+                    relatoTecnico: campos[1]
+                };
+                salvarRascunho('tecnico', rascunhoDados);
+
+                elements.erroTecnico.style.display = "none";
+                await gerarPDF("TÉCNICO", campos);
+                limparRascunho('tecnico');
+                showToast('Denúncia enviada com sucesso! PDF gerado.', 'success');
+            } finally {
+                isSubmitting = false;
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }, 500);
+
+        const enviarInfraDebounced = debounce(async function() {
+            if (isSubmitting) return;
+            isSubmitting = true;
+
+            const btn = document.getElementById('btnEnviarInfra');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+
+            try {
+                const email = elements.emailInput.value.trim();
+
+                const areaInfra = document.getElementById("areaInfra").value;
+                const relatoInfra = document.getElementById("relatoInfra").value.trim();
+                const campos = [areaInfra, relatoInfra];
+
+                if (campos.some(c => c === "") || (modo === "identificado" && !email)) {
+                    elements.erroInfra.style.display = "block";
+                    showToast('Preencha todos os campos', 'error');
+                    return;
+                }
+
+                const rascunhoDados = {
+                    areaInfra: campos[0],
+                    relatoInfra: campos[1]
+                };
+                salvarRascunho('infra', rascunhoDados);
+
+                elements.erroInfra.style.display = "none";
+                await gerarPDF("INFRAESTRUTURA", campos);
+                limparRascunho('infra');
+                showToast('Reclamação enviada com sucesso! PDF gerado.', 'success');
+            } finally {
+                isSubmitting = false;
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }, 500);
+
+        const enviarOutrosDebounced = debounce(async function() {
+            if (isSubmitting) return;
+            isSubmitting = true;
+
+            const btn = document.getElementById('btnEnviarOutros');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+
+            try {
+                const email = elements.emailInput.value.trim();
+                const relatoOutros = document.getElementById("relatoOutros").value.trim();
+                const campos = [relatoOutros];
+
+                if (relatoOutros === "" || (modo === "identificado" && !email)) {
+                    elements.erroOutros.style.display = "block";
+                    showToast('Preencha o campo de relato', 'error');
+                    return;
+                }
+
+                const rascunhoDados = {
+                    relatoOutros: campos[0]
+                };
+                salvarRascunho('outros', rascunhoDados);
+
+                elements.erroOutros.style.display = "none";
+                await gerarPDF("OUTROS", campos);
+                limparRascunho('outros');
+                showToast('Reclamação enviada com sucesso! PDF gerado.', 'success');
+            } finally {
+                isSubmitting = false;
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }, 500);
+
+        // === FUNÇÃO PRINCIPAL DE GERAÇÃO DE PDF ===
+
+        async function gerarPDF(tipo, dados) {
+            // Carregar jsPDF sob demanda (lazy loading)
+            const jspdfLib = await loadJsPDF();
+            const { jsPDF } = jspdfLib;
+            const doc = new jsPDF();
+
+            const email = elements.emailInput.value.trim();
+            const protocolo = gerarProtocolo(tipo);
+            const dataAtual = new Date();
+
+            // Sanitizar dados
+            const dadosSanitizados = dados.map(d => sanitizarTexto(d));
+
+            // === CONFIGURAÇÃO DO CABEÇALHO DO PDF ===
+            doc.setFontSize(18);
+            doc.text("SISTEMA RECLAME - REGISTRO DE DENÚNCIA", 20, 20);
+
+            doc.setFontSize(10);
+            doc.text(`Versão: ${VERSION}`, 20, 30);
+            doc.text(`Protocolo: ${protocolo}`, 20, 38);
+
+            doc.setFontSize(12);
+            doc.text("Tipo: " + tipo, 20, 50);
+            doc.text("Data/Hora do registro: " + dataAtual.toLocaleString(), 20, 60);
+
+            // Informação do modo
+            if (modo === "identificado") {
+                doc.text("Identificado por e-mail: " + email, 20, 70);
+            } else {
+                doc.text("Modo: ANÔNIMO", 20, 70);
+            }
+
+            // Linha divisória
+            doc.line(20, 78, 190, 78);
+
+            // === MAPEAMENTO DE RÓTULOS ===
+            const labels = {
+                "ASSÉDIO": ["Nome do Assediado:", "Nome do Assediador:", "Ocupação do Assediador:", "Local:", "Data:", "Hora:", "Relato:"],
+                "ALUNO": ["Curso:", "Aluno Denunciado:", "Relato:"],
+                "PROFESSOR": ["Curso:", "Nome do Professor:", "Disciplina:", "Relato:"],
+                "TÉCNICO": ["Nome do Técnico:", "Relato do Fato:"],
+                "INFRAESTRUTURA": ["Área da Reclamação:", "Relato do Fato:"],
+                "OUTROS": ["Relato do Fato:"]
+            };
+
+            // === PREENCHIMENTO DOS CAMPOS ===
+            let y = 95;
+            const rotulos = labels[tipo] || [];
+
+            for (let i = 0; i < dadosSanitizados.length; i++) {
+                if (dadosSanitizados[i] && dadosSanitizados[i] !== "") {
+                    // Quebra de linha automática para textos longos
+                    const textoLinha = rotulos[i] + " " + dadosSanitizados[i];
+                    const linhas = doc.splitTextToSize(textoLinha, 160);
+                    doc.text(linhas, 20, y);
+                    y += (linhas.length * 7);
+
+                    if (y > 270) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                }
+            }
+
+            // === MARCA D'ÁGUA ===
+            doc.setFontSize(40);
+            doc.setTextColor(200, 200, 200);
+            doc.text("CONFIDENCIAL", 105, 140, { angle: 45, align: "center" });
+            doc.setTextColor(0, 0, 0);
+
+            // === QR CODE SIMULADO (texto) ===
+            doc.setFontSize(8);
+            doc.text(`Protocolo para consulta: ${protocolo}`, 20, y + 20);
+            doc.text("Para acompanhamento, utilize o protocolo acima.", 20, y + 27);
+
+            // === RODAPÉ ===
+            doc.setFontSize(9);
+            doc.text("Documento gerado pelo sistema Reclame", 20, y + 40);
+            doc.text("Este documento possui validade jurídica como registro de denúncia.", 20, y + 47);
+
+            // === NOME DO ARQUIVO ===
+            let nomeArquivo;
+            if (modo === "anonimo") {
+                nomeArquivo = `denuncia_anonimo_${dataAtual.toLocaleString().replace(/[\/: ]/g, "_")}.pdf`;
+            } else {
+                nomeArquivo = `denuncia_${email.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_${Date.now()}.pdf`;
+            }
+
+            // Salvar PDF
+            doc.save(nomeArquivo);
+
+            // === LIMPEZA DOS CAMPOS ===
+            const todosCampos = document.querySelectorAll("input, textarea, select");
+            todosCampos.forEach(campo => {
+                if (campo.id !== 'email') {
+                    campo.value = "";
+                }
+            });
+
+            // Oculta erros
+            const erros = [elements.erroForm, elements.erroAluno, elements.erroProfessor,
+                          elements.erroTecnico, elements.erroInfra, elements.erroOutros, elements.erroEmail];
+            erros.forEach(erro => {
+                if (erro) erro.style.display = "none";
+            });
+
+            // Voltar para categorias
+            voltarInicio();
+        }
+
+        // === FUNÇÃO DE SAÍDA ===
+        function sair() {
+            const confirmacao = confirm("Deseja realmente sair? Todos os dados não salvos serão perdidos.");
+            if (confirmacao) {
+                window.close();
+                alert("Se o navegador não fechar automaticamente, feche a aba manualmente.");
+            }
+        }
+
+        // === TEMA ESCURO/CLARO ===
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+
+            const themeToggle = document.getElementById('themeToggle');
+            themeToggle.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+            showToast(`Modo ${newTheme === 'dark' ? 'escuro' : 'claro'} ativado`, 'success');
+        }
+
+        // Carregar tema salvo
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+                const themeToggle = document.getElementById('themeToggle');
+                themeToggle.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+            }
+        }
+
+        // === EVENT LISTENERS ===
+        function initEventListeners() {
+            document.getElementById('btnEntrarAnonimo').addEventListener('click', abrirAviso);
+            document.getElementById('btnEntrarIdentificado').addEventListener('click', abrirEmail);
+            document.getElementById('btnFecharAviso').addEventListener('click', fecharAviso);
+            document.getElementById('btnConfirmarAnonimo').addEventListener('click', confirmarAnonimo);
+            document.getElementById('btnContinuarEmail').addEventListener('click', validarEmail);
+
+            elements.emailInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') validarEmail();
+            });
+
+            document.getElementById('btnAssedio').addEventListener('click', abrirAssedio);
+            document.getElementById('btnAluno').addEventListener('click', abrirAluno);
+            document.getElementById('btnProfessor').addEventListener('click', abrirProfessor);
+            document.getElementById('btnTecnico').addEventListener('click', abrirTecnico);
+            document.getElementById('btnInfraestrutura').addEventListener('click', abrirInfra);
+            document.getElementById('btnOutros').addEventListener('click', abrirOutros);
+
+            document.getElementById('btnEnviarAssedio').addEventListener('click', enviarFormularioDebounced);
+            document.getElementById('btnEnviarAluno').addEventListener('click', enviarAlunoDebounced);
+            document.getElementById('btnEnviarProfessor').addEventListener('click', enviarProfessorDebounced);
+            document.getElementById('btnEnviarTecnico').addEventListener('click', enviarTecnicoDebounced);
+            document.getElementById('btnEnviarInfra').addEventListener('click', enviarInfraDebounced);
+            document.getElementById('btnEnviarOutros').addEventListener('click', enviarOutrosDebounced);
+
+            elements.btnVoltar.addEventListener('click', voltarInicio);
+            elements.btnSair.addEventListener('click', sair);
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+            // Salvar rascunho automático ao digitar
+            const camposComRascunho = [
+                { tipo: 'assedio', campos: ['assediado', 'assediador', 'ocupacao', 'local', 'data', 'hora', 'relato'] },
+                { tipo: 'aluno', campos: ['curso', 'alunoDenunciado', 'relatoAluno'] },
+                { tipo: 'professor', campos: ['cursoProfessor', 'nomeProfessor', 'disciplina', 'relatoProfessor'] },
+                { tipo: 'tecnico', campos: ['nomeTecnico', 'relatoTecnico'] },
+                { tipo: 'infra', campos: ['areaInfra', 'relatoInfra'] },
+                { tipo: 'outros', campos: ['relatoOutros'] }
+            ];
+
+            camposComRascunho.forEach(item => {
+                item.campos.forEach(campoId => {
+                    const campo = document.getElementById(campoId);
+                    if (campo) {
+                        campo.addEventListener('input', debounce(() => {
+                            const dados = {};
+                            item.campos.forEach(id => {
+                                dados[id] = document.getElementById(id)?.value || '';
+                            });
+                            salvarRascunho(item.tipo, dados);
+                        }, 1000));
+                    }
+                });
+            });
+        }
+
+        // === INICIALIZAÇÃO ===
+        function init() {
+            loadTheme();
+            initEventListeners();
+            console.log(`Sistema Reclame v${VERSION} inicializado com sucesso!`);
+        }
+
+        // Iniciar aplicação
+        init();
+    </script>
+</body>
+</html>
