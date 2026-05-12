@@ -215,8 +215,8 @@
         };
 
         // --- NOVO: FUNÇÃO PARA O BANCO DE DADOS ---
-        async function enviarParaServidor(tipo, campos) {
-            const protocolo = gerarProtocolo(tipo);
+            const response = await fetch('https://hwujrkhecovjwkeswxzi.supabase.co/functions/v1/processar-denuncia', {
+    method: 'POST';
             
             // Lógica para definir quem é o 'alvo' baseado na categoria
             let alvo = "Geral";
@@ -313,7 +313,9 @@
                 await gerarPDF(tipo, campos);
                 
                 // 2. Envia para o Banco de Dados (Novo incremento)
-                await enviarParaServidor(tipo, campos);
+                const response = await fetch('https://hwujrkhecovjwkeswxzi.supabase.co/functions/v1/processar-denuncia', {
+    method: 'POST';
+enviarParaServidor(tipo, campos);
                 
                 showToast("Denúncia registrada com sucesso!");
                 voltarInicio();
