@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="description" content="Sistema de reclamações e denúncias - Sua voz importa">
+    <meta name="theme-color" content="#1e5bb8">
+    <title>Reclame - Sistema de Denúncias</title>
+
+    <script>
+        let jsPDFLoaded = false;
+        function loadJsPDF() {
+            return new Promise((resolve, reject) => {
+                if (jsPDFLoaded) {
+                    resolve(window.jspdf);
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                script.onload = () => {
+                    jsPDFLoaded = true;
+                    resolve(window.jspdf);
+                };
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+    </script>
+
+    <style>
+        /* ==================== ESTILOS GLOBAIS ==================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: linear-gradient(135deg, #eef2f7, #d9e2ec);
+            --bg-container: rgba(255, 255, 255, 0.95);
+            --text-primary: #1f2d3d;
+            --text-secondary: #555;
+            --accent-color: #6a0dad;
+            --btn-primary: #1e5bb8;
+            --btn-danger: #e74c3c;
+            --btn-danger-hover: #c0392b;
+            --btn-secondary: #5dade2;
+            --border-color: #e0e0e0;
+            --error-color: #e74c3c;
+            --success-color: #27ae60;
+            --shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+        [data-theme="dark"] {
+            --bg-primary: linear-gradient(135deg, #1a1a2e, #16213e);
+            --bg-container: rgba(30, 30, 46, 0.95);
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+            --border-color: #444;
+            --shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-primary); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; transition: background 0.3s ease; }
+        .container { width: 100%; max-width: 600px; text-align: center; background: var(--bg-container); border-radius: 20px; padding: 30px; box-shadow: var(--shadow); transition: all 0.3s ease; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        h1 { font-size: 42px; margin-bottom: 10px; color: var(--text-primary); }
+        h1 span { color: var(--accent-color); }
+        .sub { color: var(--text-secondary); margin-bottom: 30px; font-size: 16px; }
+        .btn { width: 100%; max-width: 300px; padding: 15px; margin: 10px auto; border-radius: 10px; font-size: 18px; cursor: pointer; display: block; transition: all 0.3s ease; font-weight: 600; border: none; position: relative; overflow: hidden; }
+        .anonimo { background-color: var(--btn-primary); color: white; border: 2px solid var(--btn-primary); }
+        .anonimo:hover { background-color: white; color: var(--btn-primary); transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); }
+        .sair { position: fixed; bottom: 20px; right: 20px; background-color: var(--btn-danger); color: white; padding: 12px 25px; border-radius: 10px; border: none; cursor: pointer; font-weight: 600; transition: all 0.3s ease; z-index: 1000; }
+        .voltar { position: fixed; bottom: 20px; left: 20px; background-color: var(--btn-secondary); color: white; padding: 12px 25px; border-radius: 10px; border: none; cursor: pointer; font-weight: 600; transition: all 0.3s ease; display: none; z-index: 1000; }
+        .theme-toggle { position: fixed; top: 20px; right: 20px; background-color: var(--bg-container); color: var(--text-primary); border: 2px solid var(--border-color); border-radius: 50%; width: 45px; height: 45px; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal { display: none; position: fixed; z-index: 2000; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); justify-content: center; align-items: center; top: 0; left: 0; }
+        .modal-content { background: var(--bg-container); padding: 30px; border-radius: 12px; width: 90%; max-width: 500px; text-align: center; }
+        .modal-buttons { margin-top: 20px; display: flex; gap: 10px; justify-content: center; }
+        .confirmar { flex: 1; padding: 12px; border-radius: 8px; background: var(--btn-primary); color: white; cursor: pointer; font-weight: 600; border:none; }
+        .cancelar { flex: 1; padding: 12px; border-radius: 8px; background: #ccc; cursor: pointer; font-weight: 600; border:none; }
+        .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background-color: var(--success-color); color: white; padding: 12px 24px; border-radius: 8px; z-index: 1500; font-weight: 500; }
+        .toast.error { background-color: var(--error-color); }
+        input, select, textarea { width: 100%; max-width: 400px; padding: 12px; margin-top: 8px; margin-bottom: 15px; border-radius: 8px; border: 2px solid var(--border-color); background: var(--bg-container); color: var(--text-primary); }
+        textarea { height: 120px; resize: vertical; }
+        .progress-bar { width: 100%; height: 4px; background-color: var(--border-color); margin-bottom: 20px; }
+        .progress-fill { height: 100%; background-color: var(--btn-primary); width: 0%; transition: width 0.3s ease; }
+        .erro { color: var(--error-color); display: none; margin-bottom: 15px; font-size: 14px; font-weight: 500; }
+        .email-box, .categorias, .assedio-box, .aluno-box, .professor-box, .tecnico-box, .infra-box, .outros-box { display: none; }
+    </style>
+</head>
+
+<body>
+
+    <button class="theme-toggle" id="themeToggle">🌓</button>
+
+    <div class="container" id="telaInicial">
+        <h1>Bem-vindo ao <span>Reclame</span></h1>
+        <p class="sub">Sua voz importa. Estamos aqui para ouvir você.</p>
+        <button class="btn anonimo" id="btnEntrarAnonimo">Entrar anônimo</button>
+        <button class="btn anonimo" id="btnEntrarIdentificado">Entrar identificado</button>
+    </div>
+
+    <div class="container email-box" id="telaEmail">
+        <div class="progress-bar"><div class="progress-fill" style="width: 33%;"></div></div>
+        <h1>Informe seu e-mail</h1>
+        <input type="email" id="email" placeholder="Digite seu e-mail">
+        <div class="erro" id="erroEmail">O e-mail não foi digitado corretamente</div>
+        <button class="btn anonimo" id="btnContinuarEmail">CONTINUAR</button>
+    </div>
+
+    <div class="container categorias" id="telaCategorias">
+        <div class="progress-bar"><div class="progress-fill" style="width: 66%;"></div></div>
+        <h1>CATEGORIAS</h1>
+        <button class="btn anonimo" id="btnAssedio">Assédio</button>
+        <button class="btn anonimo" id="btnAluno">Aluno</button>
+        <button class="btn anonimo" id="btnProfessor">Professor</button>
+        <button class="btn anonimo" id="btnTecnico">Técnico</button>
+        <button class="btn anonimo" id="btnInfraestrutura">Infraestrutura</button>
+        <button class="btn anonimo" id="btnOutros">Outros</button>
+    </div>
+
+    <div class="container assedio-box" id="telaAssedio">
+        <h1>Registro de Assédio</h1>
+        <input type="text" id="assediado" placeholder="Nome do assediado">
+        <input type="text" id="assediador" placeholder="Nome do assediador">
+        <select id="ocupacao">
+            <option value="">Ocupação do assediador</option>
+            <option value="Aluno">Aluno</option>
+            <option value="Professor">Professor</option>
+            <option value="Técnico">Técnico</option>
+            <option value="Outros">Outros</option>
+        </select>
+        <input type="text" id="local" placeholder="Local do assédio">
+        <input type="date" id="data">
+        <input type="time" id="hora">
+        <textarea id="relato" placeholder="Relato do fato"></textarea>
+        <div class="erro" id="erroForm">Preencha todos os campos</div>
+        <button class="btn anonimo" id="btnEnviarAssedio">ENVIAR</button>
+    </div>
+
+    <div class="container aluno-box" id="telaAluno">
+        <h1>Denúncia de Aluno</h1>
+        <input type="text" id="curso" placeholder="Nome do curso">
+        <input type="text" id="alunoDenunciado" placeholder="Nome do aluno denunciado">
+        <textarea id="relatoAluno" placeholder="Relato do fato"></textarea>
+        <div class="erro" id="erroAluno">Preencha todos os campos</div>
+        <button class="btn anonimo" id="btnEnviarAluno">ENVIAR</button>
+    </div>
+
+    <div class="container professor-box" id="telaProfessor">
+        <h1>Denúncia de Professor</h1>
+        <input type="text" id="cursoProfessor" placeholder="Nome do curso">
+        <input type="text" id="nomeProfessor" placeholder="Nome do professor">
+        <input type="text" id="disciplina" placeholder="Disciplina">
+        <textarea id="relatoProfessor" placeholder="Relato do fato"></textarea>
+        <div class="erro" id="erroProfessor">Preencha todos os campos</div>
+        <button class="btn anonimo" id="btnEnviarProfessor">ENVIAR</button>
+    </div>
+
+    <div class="container tecnico-box" id="telaTecnico">
+        <h1>Denúncia de Técnico</h1>
+        <input type="text" id="nomeTecnico" placeholder="Nome do técnico">
+        <textarea id="relatoTecnico" placeholder="Relato do fato"></textarea>
+        <div class="erro" id="erroTecnico">Preencha todos os campos</div>
+        <button class="btn anonimo" id="btnEnviarTecnico">ENVIAR</button>
+    </div>
+
+    <div class="container infra-box" id="telaInfra">
+        <h1>Reclamação de Infraestrutura</h1>
+        <select id="areaInfra">
+            <option value="">Selecione a área</option>
+            <option value="Banheiros">Banheiros</option>
+            <option value="Salas">Salas de Aula</option>
+            <option value="Ar Condicionado">Ar Condicionado</option>
+            <option value="Outros">Outros</option>
+        </select>
+        <textarea id="relatoInfra" placeholder="Relato do fato"></textarea>
+        <div class="erro" id="erroInfra">Preencha todos os campos</div>
+        <button class="btn anonimo" id="btnEnviarInfra">ENVIAR</button>
+    </div>
+
+    <div class="container outros-box" id="telaOutros">
+        <h1>Outras Reclamações</h1>
+        <textarea id="relatoOutros" placeholder="Relato do fato"></textarea>
+        <div class="erro" id="erroOutros">Preencha o campo de relato</div>
+        <button class="btn anonimo" id="btnEnviarOutros">ENVIAR</button>
+    </div>
+
+    <button class="voltar" id="btnVoltar">← Voltar</button>
+    <button class="sair" id="btnSair">✕ Sair</button>
+
+    <div class="modal" id="modalAviso">
+        <div class="modal-content">
+            <h2>Aviso Importante</h2>
+            <p>Ao optar pelo anonimato, denúncias de assédio são suprimidas por via legal.</p>
+            <div class="modal-buttons">
+                <button class="cancelar" id="btnFecharAviso">Cancelar</button>
+                <button class="confirmar" id="btnConfirmarAnonimo">Continuar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const VERSION = "2.1.0";
+        let modo = "";
+        let isSubmitting = false;
+
+        const elements = {
+            telaInicial: document.getElementById('telaInicial'),
+            telaEmail: document.getElementById('telaEmail'),
+            telaCategorias: document.getElementById('telaCategorias'),
+            telaAssedio: document.getElementById('telaAssedio'),
+            telaAluno: document.getElementById('telaAluno'),
+            telaProfessor: document.getElementById('telaProfessor'),
+            telaTecnico: document.getElementById('telaTecnico'),
+            telaInfra: document.getElementById('telaInfra'),
+            telaOutros: document.getElementById('telaOutros'),
+            btnVoltar: document.getElementById('btnVoltar'),
+            btnSair: document.getElementById('btnSair'),
+            modalAviso: document.getElementById('modalAviso'),
+            emailInput: document.getElementById('email'),
+            erroEmail: document.getElementById('erroEmail')
+        };
+
+        // --- NOVO: FUNÇÃO PARA O BANCO DE DADOS ---
+        async function enviarParaServidor(tipo, campos) {
+            const protocolo = gerarProtocolo(tipo);
+            
+            // Lógica para definir quem é o 'alvo' baseado na categoria
+            let alvo = "Geral";
+            let relato = "";
+
+            if (tipo === "ASSÉDIO") { alvo = campos[1]; relato = campos[6]; }
+            else if (tipo === "ALUNO") { alvo = campos[1]; relato = campos[2]; }
+            else if (tipo === "PROFESSOR") { alvo = campos[1]; relato = campos[3]; }
+            else if (tipo === "TÉCNICO") { alvo = campos[0]; relato = campos[1]; }
+            else if (tipo === "INFRAESTRUTURA") { alvo = campos[0]; relato = campos[1]; }
+            else { relato = campos[0]; }
+
+            const payload = {
+                protocolo: protocolo,
+                tipo_entrada: modo,
+                email_usuario: elements.emailInput.value || "Anônimo",
+                categoria: tipo,
+                alvo: alvo,
+                relato: relato,
+                timestamp: new Date().toISOString()
+            };
+
+            try {
+                // Aqui você substituirá pela URL que criaremos no Passo 3
+                const response = await fetch('https://reclame-aqui-sigma.vercel.app/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (response.ok) {
+                    console.log("Sincronizado com o banco de dados.");
+                }
+            } catch (error) {
+                console.warn("Servidor offline. A denúncia foi salva apenas no PDF local por enquanto.");
+            }
+        }
+
+        // --- UTILITÁRIOS ---
+        function gerarProtocolo(tipo) {
+            const d = new Date();
+            return `${tipo.substring(0,3)}-${d.getTime()}-${Math.floor(Math.random()*1000)}`;
+        }
+
+        function showToast(msg, type = 'success') {
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            t.textContent = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        // --- NAVEGAÇÃO ---
+        function abrirAviso() { modo = "anonimo"; elements.modalAviso.style.display = "flex"; }
+        function abrirEmail() { modo = "identificado"; elements.telaInicial.style.display = "none"; elements.telaEmail.style.display = "block"; }
+        function confirmarAnonimo() { elements.modalAviso.style.display = "none"; mostrarCategorias(); }
+        function validarEmail() {
+            const email = elements.emailInput.value;
+            if (!email.includes('@')) { elements.erroEmail.style.display = "block"; return; }
+            mostrarCategorias();
+        }
+        function mostrarCategorias() {
+            document.querySelectorAll('.container').forEach(c => c.style.display = "none");
+            elements.telaCategorias.style.display = "block";
+            elements.btnVoltar.style.display = "block";
+            document.getElementById('btnAssedio').style.display = (modo === "anonimo") ? "none" : "block";
+        }
+
+        function voltarInicio() {
+            if (elements.telaCategorias.style.display === "block") {
+                elements.telaCategorias.style.display = "none";
+                elements.telaInicial.style.display = "block";
+                elements.btnVoltar.style.display = "none";
+            } else {
+                mostrarCategorias();
+            }
+        }
+
+        // --- PROCESSAMENTO FINAL ---
+        async function finalizarProcesso(tipo, campos) {
+            if (isSubmitting) return;
+            isSubmitting = true;
+            
+            try {
+                // 1. Gera o PDF (Função já existente no seu original)
+                await gerarPDF(tipo, campos);
+                
+                // 2. Envia para o Banco de Dados (Novo incremento)
+                await enviarParaServidor(tipo, campos);
+                
+                showToast("Denúncia registrada com sucesso!");
+                voltarInicio();
+            } catch(e) {
+                showToast("Erro ao processar", "error");
+            } finally {
+                isSubmitting = false;
+            }
+        }
+
+        // --- PDF LOGIC (Simplificada para o exemplo) ---
+        async function gerarPDF(tipo, dados) {
+            const jspdfLib = await loadJsPDF();
+            const doc = new jspdfLib.jsPDF();
+            doc.text(`PROTOCOLO: ${gerarProtocolo(tipo)}`, 10, 10);
+            doc.text(`TIPO: ${tipo}`, 10, 20);
+            doc.text(`RELATO: ${dados[dados.length-1]}`, 10, 30);
+            doc.save(`denuncia_${tipo}.pdf`);
+        }
+
+        // --- EVENTOS ---
+        document.getElementById('btnEntrarAnonimo').onclick = abrirAviso;
+        document.getElementById('btnEntrarIdentificado').onclick = abrirEmail;
+        document.getElementById('btnConfirmarAnonimo').onclick = confirmarAnonimo;
+        document.getElementById('btnFecharAviso').onclick = () => elements.modalAviso.style.display = "none";
+        document.getElementById('btnContinuarEmail').onclick = validarEmail;
+        document.getElementById('btnVoltar').onclick = voltarInicio;
+        document.getElementById('btnSair').onclick = () => window.location.reload();
+        
+        document.getElementById('btnAssedio').onclick = () => { elements.telaCategorias.style.display="none"; elements.telaAssedio.style.display="block"; };
+        document.getElementById('btnAluno').onclick = () => { elements.telaCategorias.style.display="none"; elements.telaAluno.style.display="block"; };
+        document.getElementById('btnProfessor').onclick = () => { elements.telaCategorias.style.display="none"; elements.telaProfessor.style.display="block"; };
+        document.getElementById('btnTecnico').onclick = () => { elements.telaCategorias.style.display="none"; elements.telaTecnico.style.display="block"; };
+        document.getElementById('btnInfraestrutura').onclick = () => { elements.telaCategorias.style.display="none"; elements.telaInfra.style.display="block"; };
+        document.getElementById('btnOutros').onclick = () => { elements.telaCategorias.style.display="none"; elements.telaOutros.style.display="block"; };
+
+        // Envio dos formulários
+        document.getElementById('btnEnviarAssedio').onclick = () => finalizarProcesso("ASSÉDIO", [
+            document.getElementById('assediado').value, document.getElementById('assediador').value,
+            document.getElementById('ocupacao').value, document.getElementById('local').value,
+            document.getElementById('data').value, document.getElementById('hora').value,
+            document.getElementById('relato').value
+        ]);
+
+        document.getElementById('btnEnviarAluno').onclick = () => finalizarProcesso("ALUNO", [
+            document.getElementById('curso').value, document.getElementById('alunoDenunciado').value,
+            document.getElementById('relatoAluno').value
+        ]);
+
+        document.getElementById('btnEnviarProfessor').onclick = () => finalizarProcesso("PROFESSOR", [
+            document.getElementById('cursoProfessor').value, document.getElementById('nomeProfessor').value,
+            document.getElementById('disciplina').value, document.getElementById('relatoProfessor').value
+        ]);
+
+        document.getElementById('btnEnviarTecnico').onclick = () => finalizarProcesso("TÉCNICO", [
+            document.getElementById('nomeTecnico').value, document.getElementById('relatoTecnico').value
+        ]);
+
+        document.getElementById('btnEnviarInfra').onclick = () => finalizarProcesso("INFRAESTRUTURA", [
+            document.getElementById('areaInfra').value, document.getElementById('relatoInfra').value
+        ]);
+
+        document.getElementById('btnEnviarOutros').onclick = () => finalizarProcesso("OUTROS", [
+            document.getElementById('relatoOutros').value
+        ]);
+
+        document.getElementById('themeToggle').onclick = () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            document.documentElement.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+        };
+
+    </script>
+</body>
+</html>
